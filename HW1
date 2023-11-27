@@ -1,0 +1,73 @@
+Code taken from UMCES Ecological Systems Course (MEES Graduate Program) 
+
+Reading data in from a text file:
+mydata<-read.table(‘C:/data/mydata.txt’,header=T)
+
+Reading data in from a csv file:
+mydata<-read.csv(‘C:/data/mydata.csv’,header=T)
+
+Reading data in from a MS Excel file:
+library(RODBC)
+tempobject<-odbcConnectExcel(‘C:/data/mydata.xls’)
+sqlTables(tempobject)
+data1<-sqlFetch(tempobject,"sheet1")
+odbcCloseAll()
+
+Reading data in from a MS Access database:
+library(RODBC)
+temp<-odbcConnectAccess(‘C:/Data/mydata.mdb’)
+sqlTables(temp)
+fish<-sqlFetch(temp,"trophic sas dataset query")
+odbcCloseAll()
+
+Direct entry:
+beetle=rbind(c(11,29), c(191,273),c(31,8), c(64,64))
+
+mydata.1 <- mydata[mydata$gender==’m’,]
+attach(mydata)
+mydata.1 <- mydata[gender==’m’,]
+mydata.1 <-with(mydata, mydata[gender==’m’,])
+mydata.1 <- subset(mydata, gender==’m’)
+
+mydata.anova1 <- with(mydata, lm(response[gender==’m’]~site[gender==’m’]))
+mydata.anova1 <- with(mydata[mydata$gender==’m’,], lm(response~site))
+mydata$number = as.factor(mydata$number)
+mydata$number = factor(mydata$number)
+
+detach(mydata)
+
+section = the experimental section in which the wood was place (RAN = random placement of wood, CP=controlled placement of wood);
+distmove = the distance (m) a log moved in 1 year;
+horizontal = the horizontal orientation of the log relative to the stream channel;
+vertical = the vertical orientation of logs (DAM = wood completely within the stream channel, RAMP=wood with one end elevated on the bank);
+length = length (m) of the log;
+butt = the diameter (m) at the largest end of the log;
+top = the diameter (m) at the smallest end of the log;
+unit = the geomorphic unit where the log was placed (riffles or pools);
+
+log<-read.table("C:/r/data/logdata.txt",header=T)
+head(log)
+
+str(log) – returns information about the structure of the dataframe such as types of variables and their size.
+
+dim(log) – returns the dimensions of the dataframe. This is very useful when writing programs.
+
+install.packages(“pastecs”)
+library(pastecs)
+stat.desc(log)
+
+options(digits=2)
+options(scipen=100)
+stat.desc(log)
+
+log$vol <- (pi*(((log$butt+log$top)/2)^2)*log$length)
+with(log, plot(section, length))
+with(log, interaction.plot(section,vertical,length))
+with(log, plot(butt, length))
+
+install.packages(“lattice”)
+library(lattice)
+with(log, xyplot(length~butt|section))
+
+with(log, xyplot(length~butt|section*vertical))
+pairs(log)
