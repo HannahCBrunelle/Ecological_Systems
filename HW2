@@ -1,0 +1,172 @@
+#Discrete-time Logistic Population Growth Simulations
+#August 15, 2014
+#By Stephen B. Heard
+#Non-commercial use permitted.
+#####Ecological Systems HW2
+
+#Set number of generations to plot
+PlotGen <- 200
+
+###Set parameters for simulation 1###
+
+# set initial population size
+N0 <- 10
+
+#Set R
+R <- 3
+
+#Set K
+K <- 500
+
+###Run simulation###
+
+# initialize vector to hold results 
+PopSize <- N0 
+
+# create variable to hold the current population size
+PopNow <- N0 
+
+# calculate population sizes and append to popsize
+for(i in 1:PlotGen) { 
+        PopNow <- PopNow + PopNow*R*(1-PopNow/K)    #discrete logistic
+        if (PopNow < 0) {PopNow <- 0}
+        PopSize <- c(PopSize,PopNow)                #add result to vector
+}
+
+###Plot results###
+
+tvals <- 1:length(PopSize) #create a vector of time values equal to length of results vector
+
+### Plot options in code below
+### pch gives type of point
+### cex gives size of point
+### type describes type of plot (“o” indicates overplotted points and lines)
+
+plot(tvals[1:PlotGen], PopSize[1:PlotGen],type="o",col="red", 
+xlab="Generation",ylab="Population size",pch=16,cex=.75)
+______________________________________________________________________________
+
+The output should include the graph below:
+
+Let’s see what happens when we change a starting parameter. Change the R parameter value to 0.05. Now rerun the code and look at the result:
+
+It’s clear that small changes to parameter values can have a very large effect on the model’s behavior.
+
+Now, we’ll switch gears to Excel and try coding the same logistic model into Excel.
+
+______________________________________________________________________________
+
+Open a new sheet in Excel.
+
+Start by typing in column headers for the number of generations to plot (Time), the population size at time ‘t’ (Nt), and the change in population size at time ‘t’ (DeltaN). Then add rownames for the variables from the discrete-logistic model: intrinsic rate of increase (r), carrying capacity (K), and initial population size (N0).
+
+Add a list of time steps ranging from 0-200
+
+Provide starting values R = 3, K = 500, N0 = 10, and set the population size at Nt = 0 to N0.
+
+Code in the discrete logistic growth model in the DeltaN column: 
+∆N= RNt(1-NtK)
+and use it to calculate the change in population size for the first time step. Specify and fix (using $ signs in front of column and row identifiers) variable values in the equation rather than typing in the numbers.
+
+Set the cell value of Nt at t = 1 to be the sum of Nt and DeltaN.
+
+Drag and fill down all of the cells in the table with the equations for Nt (cell B5 – NOT B4!) and DeltaN (cell C4). We’ve now recreated the model that we plotted in R!
+
+Finally, we can make a simple graph to see our results:
+
+Compare this graph to the one that we created in R – they should be identical.
+
+Just as we did in R, we can tweak the values of the parameters in Excel and see the results instantly in our figure. Let’s change the R value to 0.05 again and verify that we see the same result that we did in our R version of the model…
+
+Now, we are going to walk through the code for the multispecies logistic population growth simulations. 
+#Multispecies Logistic Population Growth Simulations
+#October 28, 2014
+#By Stephen B. Heard
+#Non-commercial use permitted
+
+#Set number of generations to plot
+PlotGen <-4000
+
+###Set parameters for Competitors 1 and 2 and Predator###
+
+# set initial population sizes
+CompA0 <- 10
+CompB0 <- 0
+Pred0 <- 2
+
+#Set r
+rA <- .01
+rB <- .01
+
+#Set K
+KA <- 500
+KB <- 300
+
+#Set competition coefficients
+alpha <- 0.9   #effect of B on A
+beta <- 0.9    #effect of A on B
+
+#Set predator-prey parameters
+PredEff <- 0.001   #parameter "a" in the Lotka-Volterra predator-prey model
+PredConv <- 0.5  #parameter "f" in the Lotka-Volterra predator-prey model
+PredStarve <- 0.01  #parameter "q" in the Lotka-Volterra predator-prey model
+PredPref <- 0.5   #predator's preference: from 0 (eats only A) to 0.5 (eats A, B equally) to 1 (eats only B)
+
+###Run simulation###
+
+# initialize vector to hold results 
+CompAPopSize <- CompA0 
+CompBPopSize <- CompB0
+PredPopSize <- Pred0
+
+# create variable to hold the current population size
+CompAPopNow <- CompA0 
+CompBPopNow <- CompB0
+PredPopNow <- Pred0
+
+# calculate a pair of predation preference adjustments based on PredPref
+PredPrefA <- 1 - PredPref
+PredPrefB <- PredPref
+
+# calculate population sizes and append to popsize
+for(i in 1:PlotGen) { 
+	  # implement competition for Competitor A
+        CompAPopNow <- CompAPopNow + CompAPopNow*rA*(1-CompAPopNow/KA - alpha*CompBPopNow/KA)    #discrete logistic
+        if (CompAPopNow < 0) {CompAPopNow <- 0}
+
+	  # implement predation losses for Competitor A
+  	  PredEatsA <- PredPrefA*PredEff*CompAPopNow*PredPopNow
+	  CompAPopNow <- CompAPopNow - PredEatsA
+        if (CompAPopNow < 0) {CompAPopNow <- 0}
+
+	  # implement competition for Competitor B
+        CompBPopNow <- CompBPopNow + CompBPopNow*rB*(1-CompBPopNow/KB - beta*CompAPopNow/KB)    #discrete logistic
+        if (CompBPopNow < 0) {CompBPopNow <- 0}
+
+	  # implement predation losses for Competitor B
+  	  PredEatsB <- PredPrefB*PredEff*CompBPopNow*PredPopNow
+	  CompBPopNow <- CompBPopNow - PredEatsB
+        if (CompBPopNow < 0) {CompBPopNow <- 0}
+
+	  # implement predator population growth
+	  PredPopNow <-PredPopNow + PredConv*(PredEatsA + PredEatsB) - PredStarve*PredPopNow
+	  if (PredPopNow < 0) {PredPopNow <- 0}
+
+        CompAPopSize <- c(CompAPopSize,CompAPopNow)                #add results to vectors
+        CompBPopSize <- c(CompBPopSize,CompBPopNow)                
+	  PredPopSize <- c(PredPopSize,PredPopNow)
+}
+
+###Plot results###
+#find maximum value for y axis
+maxes <- c(max(CompAPopSize), max(CompBPopSize), max(PredPopSize))
+ymax <-max(maxes)
+YAxisLength <- max(pretty(ymax*1.05))
+
+tvals <- 1:PlotGen #create a vector of time values equal to length of results vector
+
+#par(yaxp=c(0, YAxisLength, 5))
+plot(tvals[1:PlotGen], CompAPopSize[1:PlotGen],type="o",col="red", 
+xlab="Generation",ylab="Population size",pch=16,cex=.75, ylim=c(0, YAxisLength))
+points(tvals[1:PlotGen], CompBPopSize[1:PlotGen], col="blue")
+points(tvals[1:PlotGen], PredPopSize[1:PlotGen], col= "black")
