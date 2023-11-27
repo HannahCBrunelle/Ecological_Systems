@@ -1,0 +1,319 @@
+#Ecological Systems HW 
+
+#Install package 'vegan'
+library(vegan)
+#Install package ‘MASS’
+library(MASS)
+setwd("C:/Users/Ryan/Dropbox/CourseMaterial/QE4 Biodiversity")
+
+Then we import the fish assemblage data. 
+
+fish <- read.csv("fish_comm.csv",header=TRUE,sep=",",row.names=1) 
+#import fish assemblage data
+#Note sample IDs read in as labels rather than as actual data
+
+Now we will run a few checks to make sure the data have imported correctly.
+
+class(fish) #imported correctly as a data.frame
+dim(fish) #check dimensions of the data.frame
+[1] "data.frame"
+[1] 53 44
+
+head(rownames(fish)) #lists first 6 row names
+[1] "AireEarly summerBare"     "AireSpringBare"          
+[3] "AireSpringSeagrass"       "AireSummerBare"          
+[5] "BassEarly summerBare"     "BassEarly summerSeagrass"
+
+
+head(colnames(fish)) #lists first 6 column names
+[1] "Acanthogobius.flavimanus" "Acanthopagrus.butcheri"  
+[3] "Achoerodus.viridis"       "Afurcagobius.tamarensis" 
+[5] "Aldrichetta.forsteri"     "Ambassis.jacksoniensis"  
+
+Now we can see that we have our assemblage information as well as unique identifiers of each sample which take the form of row names (again – not a data column). We are interested in linking these samples to metadata about the sites at which they were collected and the time they were collected. So, let’s import a second data set that includes this information.
+
+#import metadata on site information
+metadata <- read.csv("site_data.csv",header=TRUE,sep=",",row.names=1)
+
+Now, as before, let’s take a look to make sure the metadata imported correctly. Our row names should be the same as on our assemblage dataset and the column names should include the value for each of three categorical variables – Estuary, Season and Habitat.
+
+head(rownames(metadata)) #looks good
+ [1] "AireEarly summerBare"     "AireSpringBare"          
+[3] "AireSpringSeagrass"       "AireSummerBare"          
+[5] "BassEarly summerBare"     "BassEarly summerSeagrass"
+
+
+head(colnames(metadata)) #looks good
+[1] "Estuary" "Season"  "Habitat"
+
+
+Let’s double check to make sure our assemblage data and our metadata are sorted identically and that all of the rownames are equal.
+
+#verify our fish data and our metadata match in terms of row names
+all.equal(rownames(fish),rownames(metadata))
+[1] TRUE
+
+Now that we have our data loaded, let’s calculate our two biodiversity indices and plot the results. Remember, we are calculating species richness, which we’ll represent with R, and the Shannon diversity index for which we will use H’. Species richness is simply the count of the total number of species in each sample, disregarding density. The Shannon diversity index includes both species richness as well as information on the relative density of each species:
+
+In the equation, S refers to species richness, pi is the proportion of species i, and b is the base of the logarithm. We will use the natural log although some studies use other bases, so it’s important to double check how H’ is calculated before comparing among studies. (Note: the reference that I copied this equation from [Vegan: Ecological diversity; Oksanen, J. 2016] incorrectly identifies the index as the Shannon-Weaver index. It’s generally agreed that the ‘more correct’ name is the Shannon-Wiener index – so, make sure you identify it correctly if you use the hyphenated version! See Spellerberg and Fedor 2003, Global Ecology & Biogeography, for a nice discussion on the history behind the confusion on the name of the Shannon Index).
+
+Let’s start by plotting species richness across estuaries. We are using the ‘specnumber’ function from Vegan to calculate R, then plotting the average R value for each Estuary as identified in the metadata. Remember, our metadata rownames and order match exactly our rownames and order of the assemblage data. We then repeat the same plot using the ‘diversity’ function to calculate and plot H’.
+
+boxplot(specnumber(fish) ~ metadata$Estuary, ylab = "Species richness")
+boxplot(diversity(fish) ~ metadata$Estuary, ylab = "Shannon index")
+
+
+
+
+There are definitely patterns in the data across estuaries, but we are also interested in seasonal effects. The following lines of code request a two-panel plot space, then request boxplots of R for each estuary and each Season (Spring, Early summer, Late summer). The code then closes by resetting the plot space back to the default 1x1 plot output.
+
+#compare species richness and Shannon diversity between estuaries
+op = par(mfrow=c(1,2)) #requests 2 panel boxplot space
+boxplot(specnumber(fish) ~ metadata$Estuary, ylab = "Species richness")
+boxplot(specnumber(fish) ~ metadata$Season, ylab = "Species richness")
+
+boxplot(diversity(fish) ~ metadata$Estuary, ylab = "Shannon diversity H'")
+boxplot(diversity(fish) ~ metadata$Season, ylab = "Shannon diversity H'")
+
+
+
+
+#### I just recently learned how to reorder classes in figures such as the 
+# Season classes above. You can use the following line of code to specify
+# the order, then replotting:
+metadata$Season = factor(metadata$Season, levels=c("Spring", "Early summer", "Summer"))
+
+After this, run the boxplot code again to get the following updated versions of the figures. Note the new order of the Seasons classes in the right panels:
+
+
+
+par(op) # Restores plot parameters 
+
+In the upper panel, it looks likely that there is an estuary effect. There also looks like a seasonal effect although the large error bars on the Summer box might reduce the statistical power to detect a difference. In the bottom panel, it looks likely there is also an estuary effect on H’; however, there do not appear to be strong seasonal differences. Let’s test these patterns to see if they are statistically significant. We will use the ‘aov’ function to run an analysis of variance (ANOVA) to test for among group differences in R and H’ for each categorical variable. The first model will include Estuary and Season as well as an interaction term Estuary*Season.
+
+#use anova to test for a differences in species richness
+R_test <- aov(specnumber(fish) ~ metadata$Estuary + metadata$Season +
+                                   metadata$Estuary*metadata$Season)
+drop1(R_test,~.,test="F") #look at output: Main effects and interaction not significant
+
+Single term deletions
+
+
+Model:
+specnumber(fish) ~ metadata$Estuary + metadata$Season + metadata$Estuary * 
+    metadata$Season
+                                 Df Sum of Sq    RSS    AIC    F value Pr(>F)
+<none>                                         215.50 122.34               
+metadata$Estuary                  7    75.278  290.78 124.22   1.4472  0.2251
+metadata$Season                   2     4.500  220.00 119.44   0.3028  0.7411
+metadata$Estuary:metadata$S..     14   92.184  307.68 113.22   0.8861  0.5807
+
+
+
+These results indicate that the interaction term is not significant. There are circumstances under which we’d want to keep in the interaction term in our model but for this exercise, we are going to drop the interaction term and rerun the model with the main effects (Estuary, Season) only. 
+
+
+
+R_test2 <- aov(specnumber(fish) ~ metadata$Estuary + metadata$Season)
+drop1(R_test2,~.,test="F") #look at output:Season and Estuary are significant
+
+Single term deletions
+Model:
+specnumber(fish) ~ metadata$Estuary + metadata$Season
+                 		Df 	Sum of Sq    	RSS    	AIC 	F value    Pr(>F)    
+<none>                        				307.68 	113.22                      
+metadata$Estuary  	7    	217.32 5	25.01 	127.53  4.3388 	0.0010375 ** 
+metadata$Season   	2    	131.61 		439.30 	128.09  9.1967 	0.0004731 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Now we see that habitat and season are significant (p < 0.05). Given the sampling design, if this were a formal study (or a stats class!) we could consider concepts such as nestedness and repeated measures. That is going a bit beyond this exercise, so we’re going to accept these model results and run pair-wise comparisons using Tukey’s Honest Significant Difference (HSD) test for post-hoc comparisons. The HSD correction protects against inflation of Type I error (falsely rejecting a null hypothesis) during multiple pairwise testing. A correction such as Tukey’s HSD, Bonferroni or any of the many others is sometimes not warranted (based on practical, design and theoretical grounds) but often it is viewed as a best practice, so we’ll apply it here.
+
+
+TukeyHSD(R_test2) #test for pairwise differences between estuaries and among seasons
+
+
+  Tukey multiple comparisons of means
+    95% family-wise confidence level
+
+
+Fit: aov(formula = specnumber(fish) ~ metadata$Estuary + metadata$Season)
+
+
+$`metadata$Estuary`
+                           diff        lwr       upr     p adj
+Bass-Aire          4.500000e+00 -1.2146208 10.214621 0.2197075
+Curdies-Aire       3.833333e+00 -1.2858607  8.952527 0.2745870
+Kororoit-Aire      7.055556e+00  1.9363616 12.174750 0.0017223
+Moyne-Aire         5.100000e+00 -0.6146208 10.814621 0.1111030
+Tarra-Aire         4.500000e+00 -0.8394742  9.839474 0.1554229
+Werribee-Aire      4.625000e+00 -0.5917112  9.841711 0.1157369
+Wingan-Aire        8.500000e+00  3.0011035 13.998896 0.0003250
+Curdies-Bass      -6.666667e-01 -5.4182563  4.084923 0.9998119
+Kororoit-Bass      2.555556e+00 -2.1960340  7.307145 0.6791398
+Moyne-Bass         6.000000e-01 -4.7877962  5.987796 0.9999603
+Tarra-Bass         3.552714e-15 -4.9881300  4.988130 1.0000000
+Werribee-Bass      1.250000e-01 -4.7314938  4.981494 1.0000000
+Wingan-Bass        4.000000e+00 -1.1584221  9.158422 0.2358960
+Kororoit-Curdies   3.222222e+00 -0.7936039  7.238048 0.2007250
+Moyne-Curdies      1.266667e+00 -3.4849229  6.018256 0.9889521
+Tarra-Curdies      6.666667e-01 -3.6264321  4.959765 0.9996313
+Werribee-Curdies   7.916667e-01 -3.3477522  4.931086 0.9985714
+Wingan-Curdies     4.666667e+00  0.1768365  9.156497 0.0365231
+Moyne-Kororoit    -1.955556e+00 -6.7071452  2.796034 0.8898113
+Tarra-Kororoit    -2.555556e+00 -6.8486543  1.737543 0.5611589
+Werribee-Kororoit -2.430556e+00 -6.5699744  1.708863 0.5779696
+Wingan-Kororoit    1.444444e+00 -3.0453857  5.934275 0.9680131
+Tarra-Moyne       -6.000000e-01 -5.5881300  4.388130 0.9999331
+Werribee-Moyne    -4.750000e-01 -5.3314938  4.381494 0.9999836
+Wingan-Moyne       3.400000e+00 -1.7584221  8.558422 0.4317294
+Werribee-Tarra     1.250000e-01 -4.2839257  4.533926 1.0000000
+Wingan-Tarra       4.000000e+00 -0.7394527  8.739453 0.1542093
+Wingan-Werribee    3.875000e+00 -0.7257069  8.475707 0.1559489
+
+
+$`metadata$Season`
+                         diff        lwr       upr     p adj
+Spring-Early summer -1.906836 -4.1028741 0.2892031 0.1001318
+Summer-Early summer  1.922222 -0.2422171 4.0866615 0.0906378
+Summer-Spring        3.829058  1.6330191 6.0250963 0.0003445
+
+
+We see that both the Aire estuary has lower R than the Kororoit or Wingan estuaries, and that the Wingan also has higher R than the Curdies estuary. Among seasons, we see higher R in the summer than spring only. Now, we need to check our assumptions that the model residuals are homoscedastic (have similar variances) and are normally distributed with a mean of 0. We’ll do this by creating three plots of the residuals – a box plot of the residuals for each habitat, a histogram of the residuals and a Q-Q plot of the expected and observed quantiles (proportion of the data above or below a given value). Again, we are going to request a multipanel plot so that we can easily view all of our plots together.
+
+#let's check our ANOVA assumptions by visually inspecting our residuals
+op = par(mfrow=c(2,2)) 
+boxplot(residuals(R_test2) ~ metadata$Estuary, ylab = "Richness residuals")
+boxplot(residuals(R_test2) ~ metadata$Season, ylab = "Richness residuals")
+hist(residuals(R_test2))
+qqnorm(residuals(R_test2))
+par(op) # Restore plot parameters 
+
+The results suggest the parametric assumptions of our chosen statistical model are mostly met, although there is some evidence of non-normality. Again, this is something we could follow-up on if this were a formal analysis. Let’s repeat the analysis for H’:
+
+
+#use anova to test for a differences in Shannon diversity
+H_test <- aov(diversity(fish) ~ metadata$Estuary + metadata$Season +
+                                   metadata$Estuary*metadata$Season)
+drop1(H_test,~.,test="F") #look at output: Main effects and interaction not significant
+
+Single term deletions
+Model:
+diversity(fish) ~ metadata$Estuary + metadata$Season + metadata$Estuary * 
+    metadata$Season
+                                 			Df 	Sum of Sq     	RSS     	AIC 	F value 		Pr(>F)  
+<none>                                        					6.2387 	-65.395               
+metadata$Estuary                  		7   	0.62306 	6.8617 	-74.350  0.4137 	0.8858
+metadata$Season                   		2   	0.71321 	6.9519 	-63.658  1.6577 	0.2081
+metadata$Estuary:metadata$Season 	14   	3.00015 	9.2388 	-72.585  0.9961 	0.4818
+---
+Again, the interaction term is not significant, so we would rerun the model using only the main effects. We’ll stop here for this example but you would continue the same process as we did above, looking for pairwise differences for any significant main effects, and checking the assumptions of the model by examining the patterns in the residuals. 
+
+We are going to press on to the multivariate section of the analysis. 
+
+For the multivariate analysis, we are going to calculate a Bray-Curtis dissimilarity matrix from our assemblage data. Bray-Curtis dissimilarity b between two sites i and i' is calculated as:
+
+where j are species, nj is the species abundance (or density) at each site, and the ni+ and ni’+ are the total abundances across species at each site. So, if we look at a subsample of an example dataset with 2 sites (s29, s30) and 5 species (a-e), it might look like this (examples drawn from an online Stanford Uni. course document):
+
+
+Running through the calculations for this particular pair of sites can be seen here:
+
+The result is a dissimilarity measure that ranges from 0-1 although these values are often multiplied by 100 and reported/interpreted as percentages (i.e., Site i is 57% dissimilar to Site i'). An equivalent way to report these values is to subtract the dissimilarities from 1 (or the percentages from 100) to yield a similarity (i.e., Site i is 43% similar to Site i'). Calculating dissimilarities between all combinations of sites yields a dissimilarity matrix (example):
+
+We can calculate a Bray-Curtis dissimilarity matrix using the vegan package. We then iteratively arrange the sites in 2-D space so that the distance that separates sites in space correlates with how (dis)similar the sites are to each other. We are using non-metric multidimensional scaling (nMDS) to ordinate our data in 2-D space. This is a rank-based ordination that includes both linear (Euclidean distance b/w points in ordination space) and non-linear (rank-based relationships among sites) aspects of the dissimilarity matrix to inform optimal ordination of the sites. We assess how well our arrangement of sites ‘fit’ by checking a goodness of fit statistic, Stress S.
+
+The first thing we do is log(x+1) transform our data because we have several species that are very abundant and, if we leave our densities untransformed, those very abundant taxa will drive much of the dissimilarity between sites and influence our final ordinations. This transformation down-weights the influence of the very abundant taxa and allows the more rare species to play a role in the analysis.
+set.seed(321)
+lnfish <- log1p(fish) #log(x+1) transformation of fish assemblage data
+fish.mds <- metaMDS(lnfish, trace = FALSE) 
+#wrapper function that calculates dissimilarities, ordinations, stress
+fish.mds #call for results
+Call:
+metaMDS(comm = lnfish, trace = FALSE) 
+
+
+global Multidimensional Scaling using monoMDS
+
+
+Data:     lnfish 
+Distance: bray 
+
+
+Dimensions: 2 
+Stress:     0.2021928 
+Stress type 1, weak ties
+No convergent solutions - best solution after 20 tries
+Scaling: centring, PC rotation, halfchange scaling 
+Species: expanded scores based on ‘lnfish’ 
+
+
+Our data don’t separate very cleanly in space and you can see that in our Stress value. A low Stress is better, with <0.1 being considered ‘good’ and up to 0.2 being considered ‘acceptable’. We can see our ordination is on the edge in terms of allowing robust inference (as indicated by the high Stress) but we will soldier on and plot our data to see how the ordination looks.
+
+op = par(mfrow=c(1,1)) 
+plot(fish.mds, type = "t") #plotting our 2-D nMDS ordination
+
+This looks rather unintelligible. There are site and species ordinations overlaid on the same plot. Let’s clean it up. First we will make the species names, which are currently full Latin genus and species, shorter and more space friendly using the ‘make.cepnames’ function in Vegan which automatically shortens names for just this purpose.
+
+sh_name <- make.cepnames(names(lnfish)) #shorten names
+sh_name[1:5] #check on shorter names by looking at first 5 species names
+
+
+We are still going to have lots of names, even though they are shorter, so let’s focus on the most abundant. These will have the most influence on our ordination anyway.
+abund <- colSums(lnfish) #sums the columns of the lnfish dataset
+plot (fish.mds, display = "sites", type = "p") #plots nmds of sites only
+sel <- orditorp(fish.mds, dis="sp", lab=sh_name, priority= abund, pcol = "gray", pch="+") #this overlays our species data points with labeled short names
+
+Better! Now, we saw some differences among estuaries and seasons in our univariate analysis of R and H’. Let’s use our dissimilarity matrix to conduct some multivariate testing for differences among those categorical factors. For this we use the ‘envfit’ function.
+
+ef <- envfit(fish.mds, metadata, permutations = 999) #runs envfit analysis
+ef #call for the results
+
+
+***FACTORS:
+
+Centroids:
+                     NMDS1   NMDS2
+EstuaryAire        -0.7733 -0.4924
+EstuaryBass        -0.5872 -0.1762
+EstuaryCurdies      0.1590  0.1669
+EstuaryKororoit     0.2539  0.1653
+EstuaryMoyne        0.2511 -0.2116
+EstuaryTarra       -0.3611  0.1674
+EstuaryWerribee     0.4226  0.2625
+EstuaryWingan       0.0340 -0.3920
+SeasonEarly summer  0.0713 -0.0690
+SeasonSpring       -0.4279  0.2998
+SeasonSummer        0.3329 -0.2141
+HabitatBare        -0.6377 -0.0573
+HabitatMacroalgae   0.3981  0.1563
+HabitatSeagrass     0.4292 -0.0245
+
+Goodness of fit:
+            r2 Pr(>r)    
+Estuary 0.2325  0.038 *  
+Season  0.1600  0.003 ** 
+Habitat 0.3037  0.001 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+Permutation: free
+Number of permutations: 999
+
+Okay, we can see that there are definitely differences among groups within each of these categorical variables. 
+
+***Take a minute to look at the NMDS values – if we hadn’t set a seed for this exercise, your values would likely differ from what I’ve got pasted above. That’s because these are permutation routines and are based on randomizations of the dataset (in this case 999). Unless we set a fixed ‘seed’ or starting point in our code, we will always get slightly different values each time we rerun the routine. *** 
+
+Let’s plot the ordinations again but identify groups to see how they group in space, and then call it a day. Here we can plot the 95% confidence interval ellipses for each habitat type in the ordination space using the ‘ordiellipse’ function. Similarly, we can look at how site corresponding with those ellipse areas are actually distributed in ordination space using ‘ordispider’. We’ll add some labels while we’re at it. Let’s drawn a convex hull (maximum spanning envelope) around our points to really get a feel for how seasonal communities overlap.
+
+plot(fish.mds, display = "sites", type = "p")
+with(metadata, ordiellipse(fish.mds, Season, kind = "se", conf = 0.95))
+with(metadata, ordispider(fish.mds, Season, col = "blue", label= TRUE))
+with(metadata, ordihull(fish.mds, Season, col="blue", lty=2))
+
+
+Now we can better visualize the significant difference we saw among seasons in our ‘envfit’ analysis of the community data. The Spring community is more distant in multivariate space from Summer, while the Early summer community lies in-between. This makes intuitive sense because the community composition is changing from spring to early summer to mid-summer. We can overlay these group centroid locations on our fish species ordination to see how different species relate to these seasonal groupings.
+
+plot(fish.mds, display = "sites", type = "p")
+with(metadata, ordihull(fish.mds, Season, col="blue", lty=2))
+sel <- orditorp(fish.mds, dis="sp", lab=sh_name, priority= abund, pcol = "gray", pch="+") #this overlays our data points with labeled short names
+
+We can interpret the location of abundant species (which should have a high influence on the 2-D structure of the plot) in the nMDS plot. Species that are distributed along gradients often provide information on how species are contributing to those gradients. In this case, species that are most abundant in spring due to early recruitment processes (e.g., Rhomtapi, Contrich) are located in the upper part of the graph, while those that are most frequently encountered in mid-summer samples are located in the lower right of the graph (e.g., Gymmarm, Moncnthd, Hetesp).
